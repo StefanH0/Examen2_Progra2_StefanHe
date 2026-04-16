@@ -4,31 +4,32 @@
  */
 package Entidades;
 
+import java.time.LocalTime;
+
 /**
  *
  * @author laboratorio
  */
 public class Registro {
-    
     private Vehiculo vehiculo;
-    private String horaEntrada;
-    private String horaSalida;
+    private LocalTime horaEntrada;
+    private LocalTime horaSalida;
     private double monto;
 
     // Constructor vacío
     public Registro() {
     }
 
-    // Constructor con entrada
-    public Registro(Vehiculo vehiculo, String horaEntrada) {
+    // Constructor solo con entrada
+    public Registro(Vehiculo vehiculo, LocalTime horaEntrada) {
         this.vehiculo = vehiculo;
         this.horaEntrada = horaEntrada;
-        this.horaSalida = "";
+        this.horaSalida = null;
         this.monto = 0;
     }
 
-    // Constructor con entrada y salida
-    public Registro(Vehiculo vehiculo, String horaEntrada, String horaSalida) {
+    // Constructor completo
+    public Registro(Vehiculo vehiculo, LocalTime horaEntrada, LocalTime horaSalida) {
         this.vehiculo = vehiculo;
         this.horaEntrada = horaEntrada;
         this.horaSalida = horaSalida;
@@ -44,19 +45,19 @@ public class Registro {
         this.vehiculo = vehiculo;
     }
 
-    public String getHoraEntrada() {
+    public LocalTime getHoraEntrada() {
         return horaEntrada;
     }
 
-    public void setHoraEntrada(String horaEntrada) {
+    public void setHoraEntrada(LocalTime horaEntrada) {
         this.horaEntrada = horaEntrada;
     }
 
-    public String getHoraSalida() {
+    public LocalTime getHoraSalida() {
         return horaSalida;
     }
 
-    public void setHoraSalida(String horaSalida) {
+    public void setHoraSalida(LocalTime horaSalida) {
         this.horaSalida = horaSalida;
     }
 

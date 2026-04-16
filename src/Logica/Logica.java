@@ -4,8 +4,11 @@
  */
 package Logica;
 
+import AccesoDatos.AccesoDatos;
 import Entidades.Registro;
 import Entidades.Vehiculo;
+import java.time.Duration;
+import java.time.LocalTime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,19 +19,22 @@ import java.util.List;
  */
 public class Logica {
  
-    private List<Registro> activos;
+  private List<Registro> activos;
     private List<Registro> historial;
+    private AccesoDatos dao;
+
     private final double TARIFA = 500;
 
     public Logica() {
         activos = new ArrayList<>();
-        historial = new ArrayList<>();
+        dao = new AccesoDatos();
+        historial = dao.leerRegistros(); // cargar historial desde archivo
     }
 
     // =========================
     // REGISTRAR ENTRADA
     // =========================
-    public String registrarEntrada(String placa, String tipo, String horaEntrada) {
+    public String registrarEntrada(String placa, String tipo, String horaEntradaStr) {
 
         if (placa == null || placa.isEmpty()) {
             throw new RuntimeException("Placa obligatoria");
@@ -38,21 +44,22 @@ public class Logica {
             throw new RuntimeException("Tipo obligatorio");
         }
 
-        if (horaEntrada == null || horaEntrada.isEmpty()) {
+        if (horaEntradaStr == null || horaEntradaStr.isEmpty()) {
             throw new RuntimeException("Hora de entrada obligatoria");
         }
 
-        validarHora(horaEntrada);
+        // Convertir String → LocalTime
+        LocalTime horaEntrada = LocalTime.parse(horaEntradaStr);
 
-        // Verificar duplicado
+        // Validar duplicado
         for (Registro r : activos) {
             if (r.getVehiculo().getPlaca().equalsIgnoreCase(placa)) {
-                throw new RuntimeException("El vehículo ya está dentro del parqueo");
+                throw new RuntimeException("El vehículo ya está en el parqueo");
             }
         }
 
-        Vehiculo vehiculo = new Vehiculo(placa, tipo);
-        Registro registro = new Registro(vehiculo, horaEntrada);
+        Vehiculo v = new Vehiculo(placa, tipo);
+        Registro registro = new Registro(v, horaEntrada);
 
         activos.add(registro);
 
@@ -62,13 +69,13 @@ public class Logica {
     // =========================
     // REGISTRAR SALIDA
     // =========================
-    public String registrarSalida(String placa, String horaSalida) {
+    public String registrarSalida(String placa, String horaSalidaStr) {
 
-        if (horaSalida == null || horaSalida.isEmpty()) {
+        if (horaSalidaStr == null || horaSalidaStr.isEmpty()) {
             throw new RuntimeException("Hora de salida obligatoria");
         }
 
-        validarHora(horaSalida);
+        LocalTime horaSalida = LocalTime.parse(horaSalidaStr);
 
         Registro encontrado = null;
 
@@ -80,21 +87,21 @@ public class Logica {
         }
 
         if (encontrado == null) {
-            throw new RuntimeException("Vehículo no encontrado en parqueo");
+            throw new RuntimeException("Vehículo no encontrado");
         }
 
-        int entradaMin = convertirAMinutos(encontrado.getHoraEntrada());
-        int salidaMin = convertirAMinutos(horaSalida);
+        LocalTime horaEntrada = encontrado.getHoraEntrada();
 
-        if (salidaMin < entradaMin) {
-            throw new RuntimeException("La hora de salida no puede ser menor que la entrada");
+        if (horaSalida.isBefore(horaEntrada)) {
+            throw new RuntimeException("La salida no puede ser menor que la entrada");
         }
 
-        int diferencia = salidaMin - entradaMin;
+        // Calcular tiempo
+        Duration duracion = Duration.between(horaEntrada, horaSalida);
+        long minutos = duracion.toMinutes();
 
-        // Calcular horas con redondeo
-        int horas = diferencia / 60;
-        if (diferencia % 60 != 0) {
+        long horas = minutos / 60;
+        if (minutos % 60 != 0) {
             horas++;
         }
 
@@ -104,51 +111,17 @@ public class Logica {
 
         double monto = horas * TARIFA;
 
+        // Actualizar registro
         encontrado.setHoraSalida(horaSalida);
         encontrado.setMonto(monto);
 
         activos.remove(encontrado);
         historial.add(encontrado);
 
+        // Guardar en archivo
+        dao.guardarRegistro(encontrado);
+
         return "Salida registrada. Monto: ₡" + monto;
-    }
-
-    // =========================
-    // VALIDAR FORMATO HH:mm
-    // =========================
-    private void validarHora(String hora) {
-
-        if (!hora.contains(":")) {
-            throw new RuntimeException("Formato inválido. Use HH:mm");
-        }
-
-        String[] partes = hora.split(":");
-
-        if (partes.length != 2) {
-            throw new RuntimeException("Formato inválido. Use HH:mm");
-        }
-
-        try {
-            int h = Integer.parseInt(partes[0]);
-            int m = Integer.parseInt(partes[1]);
-
-            if (h < 0 || h > 23 || m < 0 || m > 59) {
-                throw new RuntimeException("Hora fuera de rango");
-            }
-
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("Formato inválido. Use números");
-        }
-    }
-
-    // =========================
-    // CONVERTIR HH:mm → minutos
-    // =========================
-    private int convertirAMinutos(String hora) {
-        String[] partes = hora.split(":");
-        int h = Integer.parseInt(partes[0]);
-        int m = Integer.parseInt(partes[1]);
-        return h * 60 + m;
     }
 
     // =========================
@@ -162,8 +135,10 @@ public class Logica {
         return historial;
     }
 
+    // =========================
+    // LIMPIAR HISTORIAL
+    // =========================
     public void eliminarHistorial() {
         historial.clear();
     }
 }
-
